@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.github
+*.log
+.env
+.env.*
+coverage
+playwright-report
+test-results
+helm
+README.md

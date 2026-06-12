@@ -1,0 +1,14 @@
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: ['src/server.ts'],
+  format: ['esm'],
+  target: 'node20',
+  platform: 'node',
+  outDir: 'dist',
+  clean: true,
+  sourcemap: true,
+  // Bundle the workspace shared package; keep heavy native/runtime deps external.
+  noExternal: ['@ai-fluency/shared'],
+  external: ['@prisma/client', 'bullmq', 'ioredis'],
+});

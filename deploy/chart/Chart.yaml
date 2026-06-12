@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ai-fluency-scorer
+description: Internal Phrase application for AI fluency assessment
+type: application
+version: 0.1.0
+appVersion: "latest"
