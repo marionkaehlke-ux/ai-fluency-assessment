@@ -1,0 +1,28 @@
+{{- if and .Values.ingress.enabled .Values.ingress.oidc.enabled }}
+apiVersion: apisix.apache.org/v1alpha1
+kind: PluginConfig
+metadata:
+  name: {{ include "chart.fullname" . }}-oidc
+  {{- if eq .Values.ingress.gatewayName "apisix-public" }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-1"
+    helm.sh/resource-policy: keep
+  {{- end }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  plugins:
+    - name: openid-connect
+      config:
+        client_id: {{ .Values.ingress.oidc.clientId | quote }}
+        client_secret: {{ .Values.ingress.oidc.clientSecret | quote }}
+        discovery: "https://memsource.okta.com/.well-known/openid-configuration"
+        redirect_uri: "https://{{ .Values.ingress.hostname }}/oauth2/idpresponse"
+        bearer_only: false
+        # 'groups' scope is required so the gateway includes group memberships in X-Userinfo
+        # for the app's role mapping (spec §3.1 / CLAUDE.md).
+        scope: "openid email profile groups"
+        session:
+          secret: {{ .Values.ingress.oidc.sessionSecret | quote }}
+{{- end }}

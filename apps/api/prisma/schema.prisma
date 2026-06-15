@@ -1,0 +1,133 @@
+// AI Fluency Assessment — data model (spec §6).
+// Column names: snake_case (@map). TypeScript field names: camelCase (CLAUDE.md).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  EMPLOYEE
+  MANAGER
+  ELT
+  ADMIN_CALIBRATOR
+}
+
+enum AssessmentStatus {
+  DRAFT
+  SELF_SUBMITTED
+  CALIBRATED
+  ARCHIVED
+}
+
+enum Dimension {
+  MINDSET
+  STRATEGY
+  BUILDING
+  ACCOUNTABILITY
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  role         UserRole @default(EMPLOYEE)
+  functionArea String   @default("UNASSIGNED") @map("function_area")
+  managerId    String?  @map("manager_id")
+  manager      User?    @relation("ManagerReports", fields: [managerId], references: [id])
+  reports      User[]   @relation("ManagerReports")
+
+  assessments     Assessment[]
+  calibrationsRun ManagerCalibration[] @relation("CalibratedBy")
+  auditEntries    AuditLog[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([managerId])
+  @@map("users")
+}
+
+model Assessment {
+  id              String           @id @default(uuid())
+  userId          String           @map("user_id")
+  user            User             @relation(fields: [userId], references: [id])
+  cycle           String // e.g. '2026-H1'
+  status          AssessmentStatus @default(DRAFT)
+  openingResponse String?          @map("opening_response") @db.Text
+  // compositeLevel is computed ONLY from agreedLevel values, never aiSuggestedLevel (spec §7a.3).
+  compositeLevel  Float?           @map("composite_level")
+  aiNarrative     String?          @map("ai_narrative") @db.Text
+  scoringFailed   Boolean          @default(false) @map("scoring_failed")
+
+  dimensionScores DimensionScore[]
+  calibration     ManagerCalibration?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  // updatedAt drives optimistic locking (spec §7a.4).
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, cycle])
+  @@index([status])
+  @@index([cycle])
+  @@map("assessments")
+}
+
+model DimensionScore {
+  id           String     @id @default(uuid())
+  assessmentId String     @map("assessment_id")
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  dimension    Dimension
+
+  employeeResponse String? @map("employee_response") @db.Text
+  managerNotes     String? @map("manager_notes") @db.Text
+
+  // Claude's provisional suggestion (0–4) — never used in reporting/composite.
+  aiSuggestedLevel Int?    @map("ai_suggested_level")
+  aiRationale      String? @map("ai_rationale") @db.Text
+
+  // The authoritative value. Writable ONLY via /calibrate with manager_confirmed: true.
+  agreedLevel Int? @map("agreed_level")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([assessmentId, dimension])
+  @@map("dimension_scores")
+}
+
+model ManagerCalibration {
+  id           String     @id @default(uuid())
+  assessmentId String     @unique @map("assessment_id")
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  // Who ran the conversation. For no-manager cases this is the ADMIN_CALIBRATOR (spec §4.4).
+  managerId    String     @map("manager_id")
+  manager      User       @relation("CalibratedBy", fields: [managerId], references: [id])
+  conductedAt  DateTime   @default(now()) @map("conducted_at")
+  flaggedForSABuilds Boolean @default(false) @map("flagged_for_sa_builds")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("manager_calibrations")
+}
+
+// Immutable, append-only (CLAUDE.md). Stores before/after JSON for mutations.
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  actor     User?    @relation(fields: [userId], references: [id])
+  action    String
+  targetId  String?  @map("target_id")
+  before    Json?
+  after     Json?
+  metadata  Json?
+  timestamp DateTime @default(now())
+
+  @@index([action])
+  @@index([targetId])
+  @@map("audit_log")
+}
