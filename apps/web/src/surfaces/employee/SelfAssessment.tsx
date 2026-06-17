@@ -187,8 +187,9 @@ function CharCount({ value, min }: { value: string; min: number }) {
   );
 }
 
-/** Polls the assessment until AI suggestions appear (scoring runs asynchronously). */
+/** Polls the assessment until AI suggestions appear (scoring runs synchronously now). */
 function ResultView({ assessmentId, cycle }: { assessmentId: string; cycle: string }) {
+  const [timedOut, setTimedOut] = useState(false);
   const q = useQuery({
     queryKey: ['assessment', assessmentId],
     queryFn: () => api.get<Assessment>(`/assessments/${assessmentId}`),
@@ -198,6 +199,14 @@ function ResultView({ assessmentId, cycle }: { assessmentId: string; cycle: stri
       return scored || a?.scoringFailed ? false : 2000;
     },
   });
+
+  useEffect(() => {
+    const a = q.data;
+    const scored = a?.dimensionScores.every((d) => d.aiSuggestedLevel != null);
+    if (scored || a?.scoringFailed) return;
+    const t = setTimeout(() => setTimedOut(true), 30_000);
+    return () => clearTimeout(t);
+  }, [q.data]);
 
   const retry = useMutation({
     mutationFn: () => api.post(`/assessments/${assessmentId}/score`),
@@ -226,7 +235,16 @@ function ResultView({ assessmentId, cycle }: { assessmentId: string; cycle: stri
     return (
       <Card>
         <p className="text-sm text-gray-600">Scoring your responses… this usually takes a few seconds.</p>
-        <div className="mt-3"><Spinner /></div>
+        {timedOut ? (
+          <div className="mt-4">
+            <p className="mb-3 text-sm text-gray-500">This is taking longer than expected.</p>
+            <Button disabled={retry.isPending} onClick={() => { setTimedOut(false); retry.mutate(); }}>
+              {retry.isPending ? 'Retrying…' : 'Try again'}
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-3"><Spinner /></div>
+        )}
       </Card>
     );
   }
