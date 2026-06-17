@@ -66,10 +66,8 @@ env:
     value: "andrea.tabacchi@phrase.com,georg.ell@phrase.com,ian.woolley@phrase.com,jason.hemingway@phrase.com,martin.konop@phrase.com,marion.kaehlke@phrase.com,stephen.lumenta@phrase.com"
 
 # Secret env vars — injected at deploy time via --set secrets.KEY=value. Never hard-code here.
-secrets: {}
-#  DATABASE_URL: ""
-#  REDIS_URL: ""
-#  ANTHROPIC_API_KEY: ""
+secrets:
+  ANTHROPIC_API_KEY: ""
 
 networkPolicy:
   extraEgress: []
