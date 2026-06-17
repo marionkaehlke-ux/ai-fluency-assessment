@@ -15,26 +15,29 @@ interface ScoringJobData {
 // ioredis instance is a valid runtime connection; the cast bridges duplicate ioredis types.
 const connection = redis as unknown as ConnectionOptions;
 
-export const scoringQueue = new Queue<ScoringJobData, void, 'score'>(QUEUE_NAME, {
-  connection,
-  defaultJobOptions: {
-    attempts: 3, // retry up to 3 times before dead-letter (spec §7a.1)
-    backoff: { type: 'exponential', delay: 2_000 },
-    removeOnComplete: 1000,
-    removeOnFail: false, // keep failed jobs as the dead-letter record
-  },
-});
+export const scoringQueue = redis
+  ? new Queue<ScoringJobData, void, 'score'>(QUEUE_NAME, {
+      connection,
+      defaultJobOptions: {
+        attempts: 3, // retry up to 3 times before dead-letter (spec §7a.1)
+        backoff: { type: 'exponential', delay: 2_000 },
+        removeOnComplete: 1000,
+        removeOnFail: false, // keep failed jobs as the dead-letter record
+      },
+    })
+  : null;
 
 /** Acquire a short-lived Redis lock so parallel scoring jobs can't run for one assessment. */
 async function acquireLock(key: string): Promise<boolean> {
-  const res = await redis.set(`lock:scoring:${key}`, '1', 'PX', LOCK_TTL_MS, 'NX');
+  const res = await redis!.set(`lock:scoring:${key}`, '1', 'PX', LOCK_TTL_MS, 'NX');
   return res === 'OK';
 }
 async function releaseLock(key: string): Promise<void> {
-  await redis.del(`lock:scoring:${key}`);
+  await redis!.del(`lock:scoring:${key}`);
 }
 
 export async function enqueueScoring(assessmentId: string): Promise<void> {
+  if (!scoringQueue) return; // SCORING_ENABLED=false — no queue, no-op
   // Idempotent by assessment id — a duplicate enqueue replaces the pending job.
   await scoringQueue.add('score', { assessmentId }, { jobId: assessmentId });
 }
