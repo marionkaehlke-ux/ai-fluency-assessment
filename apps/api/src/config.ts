@@ -10,7 +10,6 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
   DATABASE_URL: z.string().min(1),
-  REDIS_URL: z.string().optional(),
 
   ANTHROPIC_API_KEY: z.string().min(1),
   CLAUDE_MODEL: z.string().min(1), // pinned, never floated (spec §7.4)
@@ -64,10 +63,6 @@ function loadConfig() {
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
   const env = parsed.data;
-
-  if (env.SCORING_ENABLED && !env.REDIS_URL) {
-    throw new Error('REDIS_URL is required when SCORING_ENABLED=true.');
-  }
 
   if (env.NODE_ENV === 'production' && env.AUTH_DEV_BYPASS) {
     throw new Error('AUTH_DEV_BYPASS must never be enabled in production.');

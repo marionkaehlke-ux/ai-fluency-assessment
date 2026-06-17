@@ -9,8 +9,9 @@ import {
 import { prisma } from '../lib/prisma.js';
 import { Errors } from '../lib/errors.js';
 import { audit } from './audit.js';
-import { enqueueScoring } from '../queue/scoring-queue.js';
+import { scoreAssessment, ScoringFailedError, type ScoringInput } from './scoring.js';
 import { sendManagerSubmissionEmail } from './notify.js';
+import { config } from '../config.js';
 import type { CurrentUser } from '../types.js';
 import type { CalibrateBody, SaveDraftBody, SubmitBody } from '../schemas/requests.js';
 
@@ -97,7 +98,48 @@ export async function saveDraft(id: string, user: CurrentUser, body: SaveDraftBo
   return getAssessment(id);
 }
 
-/** POST /submit — lock responses, move to SELF_SUBMITTED, enqueue scoring, notify manager. */
+/** Run Claude scoring synchronously and persist results. No-op when scoring is disabled. */
+async function runScoring(id: string): Promise<void> {
+  if (!config.SCORING_ENABLED) return;
+
+  const assessment = await prisma.assessment.findUnique({
+    where: { id },
+    include: { dimensionScores: true },
+  });
+  if (!assessment) return;
+
+  const byDim = new Map(assessment.dimensionScores.map((d) => [d.dimension, d]));
+  const input: ScoringInput = {
+    openingResponse: assessment.openingResponse ?? '',
+    mindset: byDim.get('MINDSET')?.employeeResponse ?? '',
+    strategy: byDim.get('STRATEGY')?.employeeResponse ?? '',
+    building: byDim.get('BUILDING')?.employeeResponse ?? '',
+    accountability: byDim.get('ACCOUNTABILITY')?.employeeResponse ?? '',
+  };
+
+  try {
+    const { result, model, promptVersion } = await scoreAssessment(input);
+    await prisma.$transaction(async (tx) => {
+      for (const [dim, field] of [
+        ['MINDSET', 'mindset'], ['STRATEGY', 'strategy'],
+        ['BUILDING', 'building'], ['ACCOUNTABILITY', 'accountability'],
+      ] as const) {
+        await tx.dimensionScore.update({
+          where: { assessmentId_dimension: { assessmentId: id, dimension: dim } },
+          data: { aiSuggestedLevel: result[field].level, aiRationale: result[field].rationale },
+        });
+      }
+      await tx.assessment.update({ where: { id }, data: { scoringFailed: false } });
+      await audit({ userId: assessment.userId, action: AUDIT_ACTIONS.SCORE_GENERATED, targetId: id, metadata: { model, promptVersion } }, tx);
+    });
+  } catch (err) {
+    const isScoringError = err instanceof ScoringFailedError;
+    await prisma.assessment.update({ where: { id }, data: { scoringFailed: true } }).catch(() => undefined);
+    await audit({ userId: null, action: AUDIT_ACTIONS.SCORE_FAILED, targetId: id, metadata: { cause: isScoringError ? (err as ScoringFailedError).failureCause : 'scoring_error' } }).catch(() => undefined);
+  }
+}
+
+/** POST /submit — lock responses, move to SELF_SUBMITTED, score synchronously, notify manager. */
 export async function submit(id: string, user: CurrentUser, body: SubmitBody) {
   const before = await getAssessment(id);
   // Idempotent: a second submit on an already-submitted assessment is a no-op (spec §7a.4).
@@ -119,7 +161,7 @@ export async function submit(id: string, user: CurrentUser, body: SubmitBody) {
     await audit({ userId: user.id, action: AUDIT_ACTIONS.SELF_SUBMITTED, targetId: id }, tx);
   });
 
-  await enqueueScoring(id);
+  await runScoring(id);
 
   // Notify the manager (no email when managerId is null — CPeO digest handles those).
   const owner = await prisma.user.findUnique({
@@ -141,7 +183,7 @@ export async function submit(id: string, user: CurrentUser, body: SubmitBody) {
 export async function triggerScoring(id: string) {
   const a = await getAssessment(id);
   if (a.status === 'DRAFT') throw Errors.validation('Assessment has not been submitted yet.');
-  await enqueueScoring(id);
+  await runScoring(id);
 }
 
 /**

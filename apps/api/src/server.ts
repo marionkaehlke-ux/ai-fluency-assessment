@@ -1,21 +1,16 @@
 import { buildApp } from './app.js';
 import { config } from './config.js';
 import { prisma } from './lib/prisma.js';
-import { redis } from './lib/redis.js';
-import { startScoringWorker } from './queue/scoring-queue.js';
 
 async function main(): Promise<void> {
   const app = await buildApp();
-  const worker = config.SCORING_ENABLED ? startScoringWorker() : null;
 
   // Graceful shutdown on SIGTERM/SIGINT (12-factor disposability).
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info({ signal }, 'Shutting down');
     try {
       await app.close();
-      if (worker) await worker.close();
       await prisma.$disconnect();
-      if (redis) redis.disconnect();
     } finally {
       process.exit(0);
     }
