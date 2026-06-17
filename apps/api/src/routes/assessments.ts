@@ -110,4 +110,13 @@ export async function assessmentRoutes(app: FastifyInstance): Promise<void> {
     }
     return ok(await listUserAssessments(id));
   });
+
+  // TEMPORARY: lets the current user delete their own assessment for the current cycle.
+  app.delete('/assessments/me/current', async (req) => {
+    const u = req.currentUser;
+    await prisma.assessment.deleteMany({
+      where: { userId: u.id, cycle: config.CURRENT_CYCLE },
+    });
+    return ok({ deleted: true });
+  });
 }
