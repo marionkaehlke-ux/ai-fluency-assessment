@@ -54,32 +54,32 @@ jobs:
         with:
           version: v3.14.0
 
+      - name: Retrieve database credentials from Secrets Manager
+        run: |
+          DB_SECRET=$(aws secretsmanager get-secret-value \
+            --secret-id "github/ai-fluency-assessment/database" \
+            --query 'SecretString' --output text)
+          DATABASE_URL=$(echo "$DB_SECRET" | jq -r '.database_url')
+          echo "::add-mask::$DATABASE_URL"
+          echo "DATABASE_URL=$DATABASE_URL" >> "$GITHUB_ENV"
+
       - name: Deploy
         env:
           OKTA_CLIENT_ID: ${{ secrets.DEFAULT_OKTA_CLIENT_ID }}
           OKTA_CLIENT_SECRET: ${{ secrets.DEFAULT_OKTA_OIDC_SECRET }}
           SESSION_SECRET: ${{ secrets.DEFAULT_SESSION_SECRET }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         run: |
-          helm upgrade --install ai-fluency-scorer ./deploy/chart/ \
-            --namespace launchpad-ai-fluency-scorer \
+          helm upgrade --install ai-fluency-assessment ./deploy/chart/ \
+            --namespace launchpad-ai-fluency-assessment \
             -f ./deploy/chart/values-ingress.yaml \
             --set image.tag=${{ steps.tag.outputs.value }} \
-            --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::882466794441:role/irsa-launchpad-ai-fluency-scorer" \
+            --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::882466794441:role/irsa-launchpad-ai-fluency-assessment" \
             --set "ingress.oidc.clientId=${OKTA_CLIENT_ID}" \
             --set "ingress.oidc.clientSecret=${OKTA_CLIENT_SECRET}" \
             --set "ingress.oidc.sessionSecret=${SESSION_SECRET}" \
-            --set "secrets.DATABASE_URL=${DATABASE_URL}" \
-            --set "secrets.REDIS_URL=${REDIS_URL}" \
+            --set "secrets.DATABASE_URL=${{ env.DATABASE_URL }}" \
             --set "secrets.ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" \
-            --set "secrets.SMTP_HOST=${SMTP_HOST}" \
-            --set "secrets.SMTP_USER=${SMTP_USER}" \
-            --set "secrets.SMTP_PASSWORD=${SMTP_PASSWORD}" \
             --wait \
             --timeout 5m \
             --atomic

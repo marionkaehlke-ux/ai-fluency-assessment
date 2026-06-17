@@ -7,11 +7,11 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
   // Liveness: process is up. No external dependency checks.
   app.get('/healthz', async () => ({ status: 'ok' }));
 
-  // Readiness: can serve traffic — DB and Redis reachable.
+  // Readiness: can serve traffic — DB reachable, and Redis if scoring is enabled.
   app.get('/readyz', async (_req, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      await redis.ping();
+      if (redis) await redis.ping();
       return { status: 'ready' };
     } catch (err) {
       reply.code(503);

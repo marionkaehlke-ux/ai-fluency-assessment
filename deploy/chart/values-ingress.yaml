@@ -2,7 +2,7 @@
 # injects the X-Userinfo header (with groups) that the app's auth middleware relies on.
 ingress:
   enabled: true
-  hostname: "ai-fluency-scorer.launchpad.phrase-internal.com"
+  hostname: "ai-fluency-assessment.launchpad.phrase-internal.com"
   gatewayName: "apisix"
   gatewayNamespace: "new-ingress"
   servicePort: 80

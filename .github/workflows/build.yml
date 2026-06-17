@@ -19,7 +19,7 @@ jobs:
         uses: Phrase-Engineering/platform-core-reusable-actions/actions/build-test-push-container@main
         with:
           aws-account-map: '{"internal": "333070415076"}'
-          ecr-repository: 333070415076.dkr.ecr.eu-west-1.amazonaws.com/image/phrase/phrase-launchpad/ai-fluency-scorer/app
+          ecr-repository: 333070415076.dkr.ecr.eu-west-1.amazonaws.com/image/phrase/phrase-launchpad/ai-fluency-assessment/app
           dockerfile-path: Dockerfile
           build-context: .
           additional-tags: "commit-${{ github.sha }}"

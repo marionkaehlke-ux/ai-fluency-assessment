@@ -6,16 +6,16 @@ import { startScoringWorker } from './queue/scoring-queue.js';
 
 async function main(): Promise<void> {
   const app = await buildApp();
-  const worker = startScoringWorker();
+  const worker = config.SCORING_ENABLED ? startScoringWorker() : null;
 
   // Graceful shutdown on SIGTERM/SIGINT (12-factor disposability).
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info({ signal }, 'Shutting down');
     try {
       await app.close();
-      await worker.close();
+      if (worker) await worker.close();
       await prisma.$disconnect();
-      redis.disconnect();
+      if (redis) redis.disconnect();
     } finally {
       process.exit(0);
     }
