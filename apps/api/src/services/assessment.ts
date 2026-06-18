@@ -134,8 +134,13 @@ async function runScoring(id: string): Promise<void> {
     });
   } catch (err) {
     const isScoringError = err instanceof ScoringFailedError;
+    const cause = isScoringError ? (err as ScoringFailedError).failureCause : 'scoring_error';
+    const message = (err as Error).message;
+    // eslint-disable-next-line no-console
+    console.error('[scoring] failed', { id, cause, message });
     await prisma.assessment.update({ where: { id }, data: { scoringFailed: true } }).catch(() => undefined);
-    await audit({ userId: null, action: AUDIT_ACTIONS.SCORE_FAILED, targetId: id, metadata: { cause: isScoringError ? (err as ScoringFailedError).failureCause : 'scoring_error' } }).catch(() => undefined);
+    await audit({ userId: null, action: AUDIT_ACTIONS.SCORE_FAILED, targetId: id, metadata: { cause, message } }).catch(() => undefined);
+    throw new Error(`Scoring failed (${cause}): ${message}`);
   }
 }
 
