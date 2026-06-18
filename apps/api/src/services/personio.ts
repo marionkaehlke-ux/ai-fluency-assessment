@@ -23,7 +23,7 @@ interface PersonioResponse {
 export async function getPersonioEmployee(
   email: string,
 ): Promise<{ functionArea: string; managerEmail: string | null } | null> {
-  if (!config.PERSONIO_API_KEY || !config.PERSONIO_PARTNER_ID) return null;
+  if (!config.PERSONIO_API_KEY || !config.PERSONIO_CLIENT_ID) return null;
 
   let token: string;
   try {
@@ -39,7 +39,7 @@ export async function getPersonioEmployee(
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          'X-Personio-Partner-ID': config.PERSONIO_PARTNER_ID,
+          'X-Personio-Partner-ID': config.PERSONIO_CLIENT_ID,
           Accept: 'application/json',
         },
         signal: AbortSignal.timeout(5000),
@@ -73,7 +73,7 @@ async function authenticate(): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
-      client_id: config.PERSONIO_PARTNER_ID,
+      client_id: config.PERSONIO_CLIENT_ID,
       client_secret: config.PERSONIO_API_KEY,
     }),
     signal: AbortSignal.timeout(5000),

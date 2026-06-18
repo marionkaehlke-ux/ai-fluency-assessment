@@ -2,10 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+
 :root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Phrase Syntax design system tokens */
+  --syn-surface-page:     #fafafa;
+  --syn-surface-card:     #ffffff;
+  --syn-surface-recessed: #f3f3f3;
+  --syn-border-default:   #dfdfdf;
+  --syn-text-primary:     #181818;
+  --syn-text-secondary:   #505050;
+  --syn-text-muted:       #8c8c8c;
+  --syn-interactive:      #1080fc;
+
+  --syn-color-neutral-20: #f3f3f3;
+  --syn-color-neutral-30: #dfdfdf;
+  --syn-color-neutral-50: #8c8c8c;
+  --syn-color-neutral-70: #505050;
+  --syn-color-neutral-90: #181818;
+
+  --syn-color-click-10:   #f1f9ff;
+  --syn-color-click-50:   #1080fc;
+  --syn-color-click-70:   #0060d3;
+  --syn-color-click-90:   #0b2556;
+
+  --syn-color-support-10: #f1f4fe;
+  --syn-color-support-50: #6255f1;
+  --syn-color-support-70: #4037c3;
+
+  --syn-color-error-10:   #fcf4f3;
+  --syn-color-error-50:   #e84831;
+  --syn-color-error-70:   #bd2c17;
+
+  --syn-color-success-10: #f1fef6;
+  --syn-color-success-50: #31d583;
+  --syn-color-success-70: #039754;
+
+  --syn-elevation-10: 0 0 2px 0 #1818181a, 0 1px 4px 0 #1818181a;
+  --syn-elevation-20: 0 0 2px 0 #1818181a, 0 1px 16px 0 #1818181a;
+
+  font-family: 'Inter', 'Helvetica', sans-serif;
 }
 
 body {
-  @apply bg-gray-50 text-gray-900;
+  background: var(--syn-surface-page);
+  color: var(--syn-text-primary);
 }
