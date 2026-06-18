@@ -59,7 +59,6 @@ async function callClaude(systemPrompt: string, userMessage: string): Promise<st
     model: config.CLAUDE_MODEL,
     max_tokens: 512,
     temperature: 0,
-    top_p: 1,
     system: systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
   });
