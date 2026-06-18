@@ -25,3 +25,12 @@ npm-debug.log*
 # test artifacts
 playwright-report/
 test-results/
+
+# Vite temp dependency dirs
+apps/web/.vite/
+
+# Claude Code local config
+.claude/
+
+# Spec / report PDFs (not source code)
+*.pdf
