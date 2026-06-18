@@ -21,6 +21,7 @@ export const createAssessmentSchema = z.object({
 export const saveDraftSchema = z.object({
   expectedUpdatedAt,
   openingResponse: z.string().max(2000).optional(),
+  selfRatedLevel: levelSchema.optional(),
   responses: z
     .array(z.object({ dimension: dimensionEnum, employeeResponse: z.string().max(2000) }))
     .max(4)
@@ -31,6 +32,7 @@ export const saveDraftSchema = z.object({
 export const submitSchema = z.object({
   expectedUpdatedAt,
   openingResponse: openingResponseSchema,
+  selfRatedLevel: levelSchema,
   responses: z
     .array(z.object({ dimension: dimensionEnum, employeeResponse: dimensionResponseSchema }))
     .length(4)

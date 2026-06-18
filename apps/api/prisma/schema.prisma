@@ -59,6 +59,7 @@ model Assessment {
   cycle           String // e.g. '2026-H1'
   status          AssessmentStatus @default(DRAFT)
   openingResponse String?          @map("opening_response") @db.Text
+  selfRatedLevel  Int?             @map("self_rated_level")
   // compositeLevel is computed ONLY from agreedLevel values, never aiSuggestedLevel (spec §7a.3).
   compositeLevel  Float?           @map("composite_level")
   aiNarrative     String?          @map("ai_narrative") @db.Text

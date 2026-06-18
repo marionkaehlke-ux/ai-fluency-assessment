@@ -87,6 +87,7 @@ export async function saveDraft(id: string, user: CurrentUser, body: SaveDraftBo
   await prisma.$transaction(async (tx) => {
     await guardAssessment(tx, id, body.expectedUpdatedAt, ['DRAFT'], {
       ...(body.openingResponse !== undefined ? { openingResponse: body.openingResponse } : {}),
+      ...(body.selfRatedLevel !== undefined ? { selfRatedLevel: body.selfRatedLevel } : {}),
     });
     for (const r of body.responses ?? []) {
       await tx.dimensionScore.update({
@@ -156,6 +157,7 @@ export async function submit(id: string, user: CurrentUser, body: SubmitBody) {
     await guardAssessment(tx, id, body.expectedUpdatedAt, ['DRAFT'], {
       status: 'SELF_SUBMITTED',
       openingResponse: body.openingResponse,
+      selfRatedLevel: body.selfRatedLevel,
     });
     for (const r of body.responses) {
       await tx.dimensionScore.update({

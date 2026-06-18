@@ -26,6 +26,7 @@ export interface Assessment {
   cycle: string;
   status: AssessmentStatus;
   openingResponse: string | null;
+  selfRatedLevel: number | null;
   compositeLevel: number | null;
   aiNarrative: string | null;
   scoringFailed: boolean;

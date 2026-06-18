@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   DIMENSIONS,
   LEVEL_LABELS,
+  LEVEL_MAX,
+  LEVEL_MIN,
   OPENING_MIN_CHARS,
   RESPONSE_MIN_CHARS,
   type Dimension,
@@ -29,6 +31,7 @@ export function SelfAssessment({ me }: { me: Me }) {
   const qc = useQueryClient();
   const [step, setStep] = useState(0);
   const [opening, setOpening] = useState('');
+  const [selfRatedLevel, setSelfRatedLevel] = useState<Level | null>(null);
   const [responses, setResponses] = useState<Responses>({
     MINDSET: '',
     STRATEGY: '',
@@ -47,6 +50,7 @@ export function SelfAssessment({ me }: { me: Me }) {
   useEffect(() => {
     if (!assessment) return;
     setOpening((o) => o || assessment.openingResponse || '');
+    setSelfRatedLevel((l) => l ?? (assessment.selfRatedLevel as Level | null));
     setResponses((r) => {
       const next = { ...r };
       for (const ds of assessment.dimensionScores) {
@@ -62,6 +66,7 @@ export function SelfAssessment({ me }: { me: Me }) {
       api.post<Assessment>(`/assessments/${assessment!.id}/submit`, {
         expectedUpdatedAt: assessment!.updatedAt,
         openingResponse: opening.trim(),
+        selfRatedLevel,
         responses: DIMENSIONS.map((d) => ({ dimension: d, employeeResponse: responses[d].trim() })),
       }),
     onSuccess: (data) => {
@@ -74,7 +79,7 @@ export function SelfAssessment({ me }: { me: Me }) {
   if (draft.isError || !assessment)
     return <ErrorBanner message={(draft.error as Error)?.message ?? 'Could not load your assessment.'} />;
 
-  const openingOk = opening.trim().length >= OPENING_MIN_CHARS;
+  const openingOk = opening.trim().length >= OPENING_MIN_CHARS && selfRatedLevel !== null;
   const allResponsesOk = DIMENSIONS.every((d) => responses[d].trim().length >= RESPONSE_MIN_CHARS);
 
   return (
@@ -107,6 +112,36 @@ export function SelfAssessment({ me }: { me: Me }) {
             placeholder="A few sentences…"
           />
           <CharCount value={opening} min={OPENING_MIN_CHARS} />
+
+          <div className="mt-6">
+            <label className="mb-3 block font-medium">
+              How would you score your AI fluency on the AI Fluency Ladder?
+              <span className="ml-1 text-red-500">*</span>
+            </label>
+            <div className="flex flex-col gap-2">
+              {(Array.from({ length: LEVEL_MAX - LEVEL_MIN + 1 }, (_, i) => i) as Level[]).map((level) => (
+                <label
+                  key={level}
+                  className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 text-sm transition-colors ${
+                    selfRatedLevel === level
+                      ? 'border-blue-500 bg-blue-50 font-medium'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="selfRatedLevel"
+                    value={level}
+                    checked={selfRatedLevel === level}
+                    onChange={() => setSelfRatedLevel(level)}
+                    className="accent-blue-500"
+                  />
+                  {LEVEL_LABELS[level]}
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-4 flex gap-2">
             <Button variant="ghost" onClick={() => setStep(0)}>← Back</Button>
             <Button disabled={!openingOk} onClick={() => setStep(2)}>Next →</Button>
