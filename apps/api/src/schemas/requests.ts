@@ -14,7 +14,7 @@ const levelSchema = z.number().int().min(LEVEL_MIN).max(LEVEL_MAX);
 const expectedUpdatedAt = z.coerce.date();
 
 export const createAssessmentSchema = z.object({
-  cycle: z.string().regex(/^\d{4}-H[12]$/, 'cycle must look like 2026-H1'),
+  cycle: z.string().regex(/^\d{4}-W\d{2}$/, 'cycle must look like 2026-W25'),
 });
 
 /** Draft autosave — partial responses allowed (no length floor until submit). */
