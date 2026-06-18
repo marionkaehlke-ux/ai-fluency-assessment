@@ -140,7 +140,7 @@ async function runScoring(id: string): Promise<void> {
     console.error('[scoring] failed', { id, cause, message });
     await prisma.assessment.update({ where: { id }, data: { scoringFailed: true } }).catch(() => undefined);
     await audit({ userId: null, action: AUDIT_ACTIONS.SCORE_FAILED, targetId: id, metadata: { cause, message } }).catch(() => undefined);
-    throw new Error(`Scoring failed (${cause}): ${message}`);
+    throw Errors.scoringUnavailable(`Scoring failed (${cause}): ${message}`);
   }
 }
 
