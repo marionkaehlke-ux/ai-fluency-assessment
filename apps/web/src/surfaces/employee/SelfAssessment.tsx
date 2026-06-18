@@ -191,9 +191,10 @@ function StepHeader({ step }: { step: number }) {
 
 function CharCount({ value, min }: { value: string; min: number }) {
   const n = value.trim().length;
+  const met = n >= min;
   return (
-    <p className={`mt-1 text-xs ${n >= min ? 'text-green-600' : 'text-gray-400'}`}>
-      {n} / {min} characters minimum
+    <p className={`mt-1 text-xs font-medium ${met ? 'text-green-600' : 'text-orange-500'}`}>
+      {met ? `✓ ${n} / ${min} characters` : `${n} / ${min} characters required to continue`}
     </p>
   );
 }
