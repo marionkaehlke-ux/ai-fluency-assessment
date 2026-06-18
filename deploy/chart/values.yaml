@@ -66,6 +66,8 @@ env:
 # Secret env vars — injected at deploy time via --set secrets.KEY=value. Never hard-code here.
 secrets:
   ANTHROPIC_API_KEY: ""
+  PERSONIO_PARTNER_ID: ""
+  PERSONIO_API_KEY: ""
 
 networkPolicy:
   extraEgress: []

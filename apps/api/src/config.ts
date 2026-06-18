@@ -37,6 +37,9 @@ const envSchema = z.object({
   AUTH_DEV_NAME: z.string().optional(),
   AUTH_DEV_GROUPS: z.string().optional(),
 
+  PERSONIO_PARTNER_ID: z.string().optional(),
+  PERSONIO_API_KEY: z.string().optional(),
+
   ELT_EMAILS: z.string().default(''),
   ADMIN_CALIBRATOR_GROUP: z.string().default('phrase-people-ops'),
   SMTP_HOST: z.string().optional(),

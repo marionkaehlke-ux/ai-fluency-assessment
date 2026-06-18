@@ -3,6 +3,7 @@ import { ROLE_PRECEDENCE, type UserRole } from '@ai-fluency/shared';
 import { config } from '../config.js';
 import { prisma } from '../lib/prisma.js';
 import { Errors } from '../lib/errors.js';
+import { getPersonioEmployee } from '../services/personio.js';
 import type { CurrentUser } from '../types.js';
 
 /** Claims the ingress gateway places in the base64-encoded X-Userinfo header (spec §8.1). */
@@ -66,17 +67,37 @@ export async function authenticate(req: FastifyRequest, _reply: FastifyReply): P
   const name =
     info.name ?? (`${info.given_name ?? ''} ${info.family_name ?? ''}`.trim() || email);
 
-  // Ensure the user exists (identity sync). Org fields (managerId, functionArea)
-  // are owned by Personio/CSV import, so we don't overwrite them here.
+  // Sync org data from Personio (source of truth per CLAUDE.md). Falls back to
+  // existing DB values when Personio is unreachable or credentials are not set.
+  const personio = await getPersonioEmployee(email);
+
+  let managerId: string | null = null;
+  if (personio?.managerEmail) {
+    const manager = await prisma.user.findUnique({
+      where: { email: personio.managerEmail.toLowerCase() },
+      select: { id: true },
+    });
+    managerId = manager?.id ?? null;
+  }
+
   const existing = await prisma.user.findUnique({ where: { email } });
+  const orgUpdate = personio
+    ? {
+        functionArea: personio.functionArea,
+        ...(managerId !== null ? { managerId } : {}),
+      }
+    : {};
+
   const reportsCount = existing
     ? await prisma.user.count({ where: { managerId: existing.id } })
     : 0;
   const role = resolveRole(email, groups, reportsCount > 0);
 
   const user = existing
-    ? await prisma.user.update({ where: { email }, data: { name, role } })
-    : await prisma.user.create({ data: { email, name, role } });
+    ? await prisma.user.update({ where: { email }, data: { name, role, ...orgUpdate } })
+    : await prisma.user.create({
+        data: { email, name, role, functionArea: personio?.functionArea ?? 'UNASSIGNED', managerId },
+      });
 
   const current: CurrentUser = {
     id: user.id,
