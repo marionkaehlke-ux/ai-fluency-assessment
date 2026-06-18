@@ -102,9 +102,19 @@ export function SelfAssessment({ me }: { me: Me }) {
 
       {step === 1 && (
         <Card>
-          <label className="mb-2 block font-medium">
+          <p className="mb-4 text-sm text-gray-500">
+            The AI Fluency Ladder describes five levels of AI adoption — from not using AI at all
+            (L0) to actively multiplying others’ capabilities with it (L4). This opening reflection
+            helps you warm up before the four scored questions. There are no right or wrong answers.
+          </p>
+          <label className="mb-1 block font-medium">
             What’s your honest sense of where you are with AI right now?
           </label>
+          <p className="mb-2 text-xs text-gray-400">
+            Think about: which AI tools you use, how often, and what you actually do with them.
+            When did AI last genuinely change how you worked? Where do you still avoid it or feel
+            uncertain?
+          </p>
           <textarea
             className="h-40 w-full rounded-md border border-gray-300 p-3 text-sm"
             value={opening}
