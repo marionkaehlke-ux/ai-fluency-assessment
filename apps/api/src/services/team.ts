@@ -8,11 +8,12 @@ export interface TeamOverview {
     userId: string;
     name: string;
     functionArea: string;
+    cycle: string | null;
     status: string | null;
     compositeLevel: number | null;
     flaggedForSABuilds: boolean;
     assessmentId: string | null;
-    dimensions: Record<Dimension, number | null>; // agreed levels, null until calibrated
+    dimensions: Record<Dimension, number | null>;
   }>;
 }
 
@@ -23,10 +24,13 @@ export async function getTeamOverview(managerId: string, cycle: string): Promise
       id: true,
       name: true,
       functionArea: true,
+      // Fetch current cycle first; fall back to most recent assessment if none exists.
       assessments: {
-        where: { cycle },
+        orderBy: { createdAt: 'desc' },
+        take: 2,
         select: {
           id: true,
+          cycle: true,
           status: true,
           compositeLevel: true,
           calibration: { select: { flaggedForSABuilds: true } },
@@ -38,7 +42,8 @@ export async function getTeamOverview(managerId: string, cycle: string): Promise
   });
 
   const members = reports.map((r) => {
-    const a = r.assessments[0];
+    // Prefer the assessment for the requested cycle; fall back to most recent.
+    const a = r.assessments.find((x) => x.cycle === cycle) ?? r.assessments[0];
     const dimensions = DIMENSIONS.reduce(
       (acc, d) => ({ ...acc, [d]: null as number | null }),
       {} as Record<Dimension, number | null>,
@@ -48,6 +53,7 @@ export async function getTeamOverview(managerId: string, cycle: string): Promise
       userId: r.id,
       name: r.name,
       functionArea: r.functionArea,
+      cycle: a?.cycle ?? null,
       status: a?.status ?? null,
       compositeLevel: a?.compositeLevel ?? null,
       flaggedForSABuilds: a?.calibration?.flaggedForSABuilds ?? false,

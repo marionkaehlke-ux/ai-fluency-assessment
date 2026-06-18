@@ -14,13 +14,13 @@ import type { Assessment, Me } from '../../lib/types.js';
 
 const QUESTIONS: Record<Dimension, string> = {
   MINDSET:
-    'Describe a recent moment where you chose to bring AI into your work — or deliberately chose not to. What was your thinking?',
+    'How does AI fit your typical week? Tell me about a moment AI changed how you thought about a problem.',
   STRATEGY:
-    'How does AI show up in how you plan and prioritise your work, beyond just executing tasks?',
+    'How do you approach a new task when AI could help? Has your team changed how it works because of AI — what was your role?',
   BUILDING:
-    'Tell us about something you have produced or built with AI. How did you go about it, and did anyone else use it?',
+    'Tell me about something you\'ve built with AI. When something doesn\'t work, what do you do?',
   ACCOUNTABILITY:
-    'How do you check AI outputs before you rely on or share them? Walk us through your actual practice.',
+    'How do you know if your AI use is working? Think of someone whose AI use has changed — what happened?',
 };
 
 type Responses = Record<Dimension, string>;

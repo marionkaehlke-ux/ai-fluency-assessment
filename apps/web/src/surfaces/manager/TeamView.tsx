@@ -56,6 +56,7 @@ export function TeamView({ me }: { me: Me }) {
           <thead>
             <tr className="border-b text-left text-gray-500">
               <th className="py-2">Name</th>
+              <th>Cycle</th>
               <th>Status</th>
               <th>Composite</th>
               {DIMENSIONS.map((d) => (
@@ -69,6 +70,12 @@ export function TeamView({ me }: { me: Me }) {
               <tr key={m.userId} className="border-b border-gray-100">
                 <td className="py-2 font-medium">
                   {m.name} {m.flaggedForSABuilds && <Badge>SA Builds</Badge>}
+                </td>
+                <td className="text-gray-500 text-xs">
+                  {m.cycle ?? '—'}
+                  {m.cycle && m.cycle !== me.currentCycle && (
+                    <span className="ml-1 text-orange-400">(prev)</span>
+                  )}
                 </td>
                 <td className="text-gray-600">{m.status ?? 'Not started'}</td>
                 <td>{m.compositeLevel != null ? LEVEL_LABELS[compositeToLevel(m.compositeLevel)] : '—'}</td>
