@@ -23,7 +23,7 @@ export type DimensionResult = z.infer<typeof dimensionResult>;
 /** Input validation bounds for employee free-text (spec §8.4 prompt-injection control). */
 export const RESPONSE_MIN_CHARS = 80;
 export const RESPONSE_MAX_CHARS = 2000;
-export const OPENING_MIN_CHARS = 0;
+export const OPENING_MIN_CHARS = 80;
 
 export const dimensionResponseSchema = z
   .string()

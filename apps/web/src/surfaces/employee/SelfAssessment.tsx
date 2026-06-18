@@ -112,8 +112,8 @@ export function SelfAssessment({ me }: { me: Me }) {
           </label>
           <p className="mb-2 text-xs text-gray-400">
             Think about: which AI tools you use, how often, and what you actually do with them.
-            When did AI last genuinely change how you worked? Where do you still avoid it or feel
-            uncertain?
+            Where are you a confident power-user? When did AI last genuinely change how you worked?
+            Where do you still avoid it or feel uncertain?
           </p>
           <textarea
             className="h-40 w-full rounded-md border border-gray-300 p-3 text-sm"
