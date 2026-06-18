@@ -39,8 +39,6 @@ const envSchema = z.object({
 
   ELT_EMAILS: z.string().default(''),
   ADMIN_CALIBRATOR_GROUP: z.string().default('phrase-people-ops'),
-  CURRENT_CYCLE: z.string().default('2026-H1'),
-
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().optional(),

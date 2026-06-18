@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { ok } from '@ai-fluency/shared';
-import { config } from '../config.js';
+import { getCurrentCycle } from '../lib/cycle.js';
 
 /**
  * Current user profile + role (spec §7.2 GET /auth/me).
@@ -17,7 +17,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       role: u.role,
       functionArea: u.functionArea,
       managerId: u.managerId,
-      currentCycle: config.CURRENT_CYCLE,
+      currentCycle: getCurrentCycle(),
     });
   });
 }

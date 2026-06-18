@@ -58,8 +58,6 @@ env:
     value: "false"
   - name: ADMIN_CALIBRATOR_GROUP
     value: "phrase-people-ops"
-  - name: CURRENT_CYCLE
-    value: "2026-H1"
   - name: APP_BASE_URL
     value: "https://ai-fluency-assessment.launchpad.phrase-internal.com"
   - name: ELT_EMAILS

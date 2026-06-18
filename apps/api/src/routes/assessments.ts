@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { ok } from '@ai-fluency/shared';
-import { config } from '../config.js';
+import { getCurrentCycle } from '../lib/cycle.js';
 import { Errors } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 import { assertOwnerOrManager, authorise } from '../middleware/auth.js';
@@ -37,7 +37,7 @@ export async function assessmentRoutes(app: FastifyInstance): Promise<void> {
   // Create (or fetch existing) DRAFT for the caller in a cycle.
   app.post('/assessments', { preHandler: authorise('EMPLOYEE') }, async (req) => {
     const body = createAssessmentSchema.partial().parse(req.body ?? {});
-    const cycle = body.cycle ?? config.CURRENT_CYCLE;
+    const cycle = body.cycle ?? getCurrentCycle();
     return ok(await createOrGetDraft(req.currentUser, cycle));
   });
 
@@ -115,7 +115,7 @@ export async function assessmentRoutes(app: FastifyInstance): Promise<void> {
   app.delete('/assessments/me/current', async (req) => {
     const u = req.currentUser;
     await prisma.assessment.deleteMany({
-      where: { userId: u.id, cycle: config.CURRENT_CYCLE },
+      where: { userId: u.id, cycle: getCurrentCycle() },
     });
     return ok({ deleted: true });
   });

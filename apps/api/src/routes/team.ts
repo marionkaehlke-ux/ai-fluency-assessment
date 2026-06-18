@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { ok } from '@ai-fluency/shared';
 import { config } from '../config.js';
+import { getCurrentCycle } from '../lib/cycle.js';
 import { Errors } from '../lib/errors.js';
 import { authorise } from '../middleware/auth.js';
 import { getTeamOverview } from '../services/team.js';
@@ -14,7 +15,7 @@ export async function teamRoutes(app: FastifyInstance): Promise<void> {
     if (managerId !== u.id && u.role !== 'ELT' && u.role !== 'ADMIN_CALIBRATOR') {
       throw Errors.forbidden();
     }
-    const cycle = (req.query as { cycle?: string }).cycle ?? config.CURRENT_CYCLE;
+    const cycle = (req.query as { cycle?: string }).cycle ?? getCurrentCycle();
     return ok(await getTeamOverview(managerId, cycle));
   });
 }
