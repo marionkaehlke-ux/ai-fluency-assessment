@@ -1,0 +1,72 @@
+name: Backfill Personio (one-off)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  backfill:
+    runs-on: core-arc-ondemand-launchpad
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to AWS & configure kubectl
+        uses: Phrase-Engineering/platform-core-reusable-actions/actions/aws-eks-auth@main
+        with:
+          aws-account-map: '{"launchpad": "882466794441"}'
+          env: launchpad
+          eks-cluster: launchpad-eu-west-1-main
+
+      - name: Delete previous job if it exists
+        run: |
+          kubectl delete job backfill-personio \
+            -n launchpad-ai-fluency-scorer \
+            --ignore-not-found=true
+          kubectl delete configmap backfill-personio-script \
+            -n launchpad-ai-fluency-scorer \
+            --ignore-not-found=true
+
+      - name: Apply ConfigMap and Job
+        env:
+          PERSONIO_CLIENT_ID: ${{ secrets.PERSONIO_CLIENT_ID }}
+          PERSONIO_CLIENT_SECRET: ${{ secrets.PERSONIO_CLIENT_SECRET }}
+        run: |
+          envsubst < deploy/jobs/backfill-personio.yaml \
+            | kubectl apply -f -
+
+      - name: Wait for Job to complete
+        run: |
+          kubectl wait job/backfill-personio \
+            -n launchpad-ai-fluency-scorer \
+            --for=condition=complete \
+            --timeout=300s \
+          || kubectl wait job/backfill-personio \
+            -n launchpad-ai-fluency-scorer \
+            --for=condition=failed \
+            --timeout=10s
+
+      - name: Print logs
+        if: always()
+        run: |
+          POD=$(kubectl get pods \
+            -n launchpad-ai-fluency-scorer \
+            -l job-name=backfill-personio \
+            -o jsonpath='{.items[0].metadata.name}')
+          kubectl logs -n launchpad-ai-fluency-scorer "$POD"
+
+      - name: Check Job status
+        run: |
+          SUCCEEDED=$(kubectl get job backfill-personio \
+            -n launchpad-ai-fluency-scorer \
+            -o jsonpath='{.status.succeeded}')
+          if [ "$SUCCEEDED" != "1" ]; then
+            echo "Job did not succeed."
+            exit 1
+          fi
+          echo "Backfill completed successfully."

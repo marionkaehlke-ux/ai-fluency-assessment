@@ -1,0 +1,175 @@
+---
+# ConfigMap holds the backfill script so we don't need to bake it into the image.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backfill-personio-script
+  namespace: launchpad-ai-fluency-scorer
+  labels:
+    app.kubernetes.io/name: ai-fluency-scorer
+    app.kubernetes.io/component: backfill-job
+data:
+  backfill.mjs: |
+    import { PrismaClient } from '@prisma/client';
+
+    const prisma = new PrismaClient();
+
+    async function getToken() {
+      const res = await fetch('https://api.personio.de/v1/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          client_id: process.env.PERSONIO_CLIENT_ID,
+          client_secret: process.env.PERSONIO_CLIENT_SECRET,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Personio auth failed: ${res.status} ${text}`);
+      }
+      const body = await res.json();
+      if (!body.success) throw new Error('Personio auth returned success=false');
+      return body.data.token;
+    }
+
+    async function getAllEmployees(token) {
+      const all = [];
+      let offset = 0;
+      const limit = 200;
+      while (true) {
+        const res = await fetch(
+          `https://api.personio.de/v1/company/employees?limit=${limit}&offset=${offset}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'X-Personio-Partner-ID': process.env.PERSONIO_CLIENT_ID ?? '',
+              Accept: 'application/json',
+            },
+            signal: AbortSignal.timeout(15000),
+          },
+        );
+        if (!res.ok) throw new Error(`Personio employees fetch failed: ${res.status}`);
+        const body = await res.json();
+        all.push(...body.data);
+        if (body.data.length < limit) break;
+        offset += limit;
+      }
+      return all;
+    }
+
+    async function main() {
+      console.log('Authenticating with Personio...');
+      const token = await getToken();
+
+      console.log('Fetching all Personio employees...');
+      const employees = await getAllEmployees(token);
+      console.log(`Found ${employees.length} employees in Personio`);
+
+      const byEmail = new Map();
+      for (const e of employees) {
+        const email = e.attributes.email?.value?.toLowerCase();
+        if (!email) continue;
+        byEmail.set(email, {
+          functionArea: e.attributes.department?.value?.name ?? 'UNASSIGNED',
+          managerEmail: e.attributes.supervisor?.value?.attributes?.email?.value?.toLowerCase() ?? null,
+        });
+      }
+
+      console.log('Fetching users from DB...');
+      const users = await prisma.user.findMany({ select: { id: true, email: true } });
+      console.log(`Found ${users.length} users in DB`);
+
+      let updated = 0, notFound = 0;
+
+      for (const user of users) {
+        const p = byEmail.get(user.email.toLowerCase());
+        if (!p) {
+          console.log(`  ✗ Not in Personio: ${user.email}`);
+          notFound++;
+          continue;
+        }
+
+        let managerId = null;
+        if (p.managerEmail) {
+          const manager = await prisma.user.findUnique({
+            where: { email: p.managerEmail },
+            select: { id: true },
+          });
+          managerId = manager?.id ?? null;
+          if (!manager) console.log(`  ⚠ Manager not in DB: ${p.managerEmail} (for ${user.email})`);
+        }
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { functionArea: p.functionArea, managerId },
+        });
+        console.log(`  ✓ ${user.email} → ${p.functionArea}, manager: ${p.managerEmail ?? 'none'}`);
+        updated++;
+      }
+
+      console.log(`\nDone. Updated: ${updated}, Not in Personio: ${notFound}`);
+      await prisma.$disconnect();
+    }
+
+    main().catch(err => { console.error(err); process.exit(1); });
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backfill-personio
+  namespace: launchpad-ai-fluency-scorer
+  labels:
+    app.kubernetes.io/name: ai-fluency-scorer
+    app.kubernetes.io/component: backfill-job
+spec:
+  ttlSecondsAfterFinished: 3600  # auto-clean after 1 hour
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: backfill
+          image: 333070415076.dkr.ecr.eu-west-1.amazonaws.com/image/phrase/phrase-launchpad/ai-fluency-scorer/app:latest
+          command: ["node", "/scripts/backfill.mjs"]
+          env:
+            - name: NODE_ENV
+              value: "production"
+            # PERSONIO credentials — injected by the workflow via envsubst
+            - name: PERSONIO_CLIENT_ID
+              value: "${PERSONIO_CLIENT_ID}"
+            - name: PERSONIO_CLIENT_SECRET
+              value: "${PERSONIO_CLIENT_SECRET}"
+          envFrom:
+            # Pulls DATABASE_URL (and other secrets) from the existing app secret
+            - secretRef:
+                name: ai-fluency-scorer-secrets
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: script
+          configMap:
+            name: backfill-personio-script
+        - name: tmp
+          emptyDir: {}
