@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   DIMENSIONS,
@@ -29,6 +29,9 @@ export function SelfAssessment({ me }: { me: Me }) {
   const qc = useQueryClient();
   const [step, setStep] = useState(0);
   const [opening, setOpening] = useState('');
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [responses, setResponses] = useState<Responses>({
     MINDSET: '',
     STRATEGY: '',
@@ -108,7 +111,8 @@ export function SelfAssessment({ me }: { me: Me }) {
           <p className="mb-2 text-xs text-gray-400">
             Think about: which AI tools you use, how often, and what you actually do with them.
             Where are you a confident power-user? When did AI last genuinely change how you worked?
-            Where do you still avoid it or feel uncertain?
+            Where do you still avoid it or feel uncertain? Attach your self assessment report if you
+            have completed one (voluntary).
           </p>
           <textarea
             className="h-40 w-full rounded-md border border-gray-300 p-3 text-sm"
@@ -117,6 +121,55 @@ export function SelfAssessment({ me }: { me: Me }) {
             placeholder="A few sentences…"
           />
           <CharCount value={opening} min={OPENING_MIN_CHARS} />
+
+          <div
+            className={`mt-4 rounded-md border-2 border-dashed p-4 text-center text-sm transition-colors ${dragging ? 'border-brand bg-blue-50' : 'border-gray-300 bg-gray-50'}`}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              const file = e.dataTransfer.files[0];
+              if (file) setReportFile(file);
+            }}
+          >
+            {reportFile ? (
+              <div className="flex items-center justify-center gap-2 text-gray-700">
+                <span>📎 {reportFile.name}</span>
+                <button
+                  type="button"
+                  className="text-xs text-gray-400 hover:text-red-500"
+                  onClick={() => setReportFile(null)}
+                >
+                  ✕ Remove
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-gray-500">
+                  Drag & drop your self assessment report here, or{' '}
+                  <button
+                    type="button"
+                    className="text-brand underline hover:opacity-80"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    browse to attach
+                  </button>
+                </p>
+                <p className="mt-1 text-xs text-gray-400">PDF, DOCX, or similar (voluntary)</p>
+              </>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept=".pdf,.doc,.docx,.txt"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setReportFile(file);
+              }}
+            />
+          </div>
 
           <div className="mt-4 flex gap-2">
             <Button variant="ghost" onClick={() => setStep(0)}>← Back</Button>
