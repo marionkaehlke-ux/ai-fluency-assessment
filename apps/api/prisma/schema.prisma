@@ -88,8 +88,9 @@ model DimensionScore {
   managerNotes     String? @map("manager_notes") @db.Text
 
   // Claude's provisional suggestion (0–4) — never used in reporting/composite.
-  aiSuggestedLevel Int?    @map("ai_suggested_level")
-  aiRationale      String? @map("ai_rationale") @db.Text
+  aiSuggestedLevel    Int?    @map("ai_suggested_level")
+  aiRationale         String? @map("ai_rationale") @db.Text
+  aiDevelopmentTips   String? @map("ai_development_tips") @db.Text
 
   // The authoritative value. Writable ONLY via /calibrate with manager_confirmed: true.
   agreedLevel Int? @map("agreed_level")

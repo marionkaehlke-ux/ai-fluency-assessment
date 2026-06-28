@@ -45,8 +45,8 @@ export function SelfAssessment({ me }: { me: Me }) {
   const [step, setStep] = useState(0);
   const [opening, setOpening] = useState('');
   const [reportFile, setReportFile] = useState<File | null>(null);
-  const [dimensionFiles, setDimensionFiles] = useState<Record<Dimension, File | null>>({
-    MINDSET: null, STRATEGY: null, BUILDING: null, ACCOUNTABILITY: null,
+  const [dimensionFiles, setDimensionFiles] = useState<Record<Dimension, File[]>>({
+    MINDSET: [], STRATEGY: [], BUILDING: [], ACCOUNTABILITY: [],
   });
   const [responses, setResponses] = useState<Responses>({
     MINDSET: '',
@@ -123,11 +123,11 @@ export function SelfAssessment({ me }: { me: Me }) {
         <Card>
           <p className="mb-4 text-sm text-gray-500">
             The AI Fluency Ladder describes five levels of AI adoption — from not using AI at all
-            (L0) to actively multiplying others’ capabilities with it (L4). This opening reflection
+            (L0) to actively multiplying others' capabilities with it (L4). This opening reflection
             helps you warm up before the four scored questions. There are no right or wrong answers.
           </p>
           <label className="mb-1 block font-medium">
-            What’s your honest sense of where you are with AI right now?
+            What's your honest sense of where you are with AI right now?
           </label>
           <p className="mb-2 text-xs text-gray-400">
             Think about: which AI tools you use, how often, and what you actually do with them.
@@ -143,7 +143,10 @@ export function SelfAssessment({ me }: { me: Me }) {
           />
           <CharCount value={opening} min={OPENING_MIN_CHARS} />
 
-          <FileAttach file={reportFile} onChange={setReportFile} />
+          <FileAttach
+            files={reportFile ? [reportFile] : []}
+            onChange={(fs) => setReportFile(fs[fs.length - 1] ?? null)}
+          />
 
           <div className="mt-4 flex gap-2">
             <Button variant="ghost" onClick={() => setStep(0)}>← Back</Button>
@@ -166,8 +169,8 @@ export function SelfAssessment({ me }: { me: Me }) {
               />
               <CharCount value={responses[d]} min={RESPONSE_MIN_CHARS} />
               <FileAttach
-                file={dimensionFiles[d]}
-                onChange={(f) => setDimensionFiles((prev) => ({ ...prev, [d]: f }))}
+                files={dimensionFiles[d]}
+                onChange={(fs) => setDimensionFiles((prev) => ({ ...prev, [d]: fs }))}
               />
             </Card>
           ))}
@@ -182,8 +185,8 @@ export function SelfAssessment({ me }: { me: Me }) {
         <Card>
           <h2 className="mb-2 text-lg font-semibold">Ready to submit</h2>
           <p className="text-sm text-gray-600">
-            On submit, your answers are scored by Claude. You’ll see a suggested level per dimension
-            with a short rationale. You can’t edit the AI scores — you’ll review them with your
+            On submit, your answers are scored by Claude. You'll see a suggested level per dimension
+            with a short rationale. You can't edit the AI scores — you'll review them with your
             manager.
           </p>
           {submit.isError && (
@@ -231,47 +234,54 @@ function CharCount({ value, min }: { value: string; min: number }) {
   );
 }
 
-function FileAttach({ file, onChange }: { file: File | null; onChange: (f: File | null) => void }) {
+function FileAttach({ files, onChange }: { files: File[]; onChange: (files: File[]) => void }) {
   const inputId = useId();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+
+  function addFiles(incoming: FileList | null) {
+    if (!incoming) return;
+    onChange([...files, ...Array.from(incoming)]);
+  }
+
+  function remove(index: number) {
+    onChange(files.filter((_, i) => i !== index));
+  }
+
   return (
-    <div
-      className={`mt-3 rounded-md border-2 border-dashed p-3 text-center text-sm transition-colors ${dragging ? 'border-brand bg-blue-50' : 'border-gray-200 bg-gray-50'}`}
-      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragging(false);
-        const f = e.dataTransfer.files[0];
-        if (f) onChange(f);
-      }}
-    >
-      {file ? (
-        <div className="flex items-center justify-center gap-2 text-gray-700">
-          <span>📎 {file.name}</span>
-          <button type="button" className="text-xs text-gray-400 hover:text-red-500" onClick={() => onChange(null)}>
-            ✕ Remove
-          </button>
-        </div>
-      ) : (
-        <>
-          <p className="text-gray-500">
-            Drag & drop a file here, or{' '}
-            <label htmlFor={inputId} className="cursor-pointer text-brand underline hover:opacity-80">
-              browse to attach
-            </label>
-          </p>
-          <p className="mt-1 text-xs text-gray-400">PDF, DOCX, image, or screenshot</p>
-        </>
+    <div className="mt-3 space-y-2">
+      {files.length > 0 && (
+        <ul className="space-y-1">
+          {files.map((f, i) => (
+            <li key={i} className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-700">
+              <span className="flex-1 truncate">📎 {f.name}</span>
+              <button type="button" className="text-xs text-gray-400 hover:text-red-500" onClick={() => remove(i)}>
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
+      <div
+        className={`rounded-md border-2 border-dashed p-3 text-center text-sm transition-colors ${dragging ? 'border-brand bg-blue-50' : 'border-gray-200 bg-gray-50'}`}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
+      >
+        <p className="text-gray-500">
+          Drag & drop files here, or{' '}
+          <label htmlFor={inputId} className="cursor-pointer text-brand underline hover:opacity-80">
+            browse to attach
+          </label>
+        </p>
+        <p className="mt-1 text-xs text-gray-400">PDF, DOCX, image, or screenshot — add as many as needed</p>
+      </div>
       <input
         id={inputId}
-        ref={inputRef}
         type="file"
+        multiple
         className="hidden"
         accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onChange(f); }}
+        onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
       />
     </div>
   );
@@ -311,7 +321,7 @@ function ResultView({ assessmentId, cycle }: { assessmentId: string; cycle: stri
   if (a.scoringFailed && !scored) {
     return (
       <Card>
-        <ErrorBanner message="We couldn’t score your responses right now. Your answers are saved — try again in a few minutes, or ask your manager to start the conversation." />
+        <ErrorBanner message="We couldn't score your responses right now. Your answers are saved — try again in a few minutes, or ask your manager to start the conversation." />
         <div className="mt-4">
           <Button disabled={retry.isPending} onClick={() => retry.mutate()}>
             {retry.isPending ? 'Retrying…' : 'Try again'}
@@ -339,31 +349,79 @@ function ResultView({ assessmentId, cycle }: { assessmentId: string; cycle: stri
     );
   }
 
+  const composite = a.compositeLevel;
+  const scored4 = a.dimensionScores.filter((d) => d.aiSuggestedLevel != null);
+  const avgSuggested =
+    scored4.length > 0
+      ? scored4.reduce((s, d) => s + (d.aiSuggestedLevel ?? 0), 0) / scored4.length
+      : null;
+
   return (
-    <Card>
-      <h2 className="mb-1 text-lg font-semibold">Your AI-suggested levels</h2>
-      <p className="mb-4 text-xs font-medium text-amber-700">
-        AI suggestion — review with your manager. These are not final.
-      </p>
-      <ul className="space-y-3">
-        {a.dimensionScores.map((d) => (
-          <li key={d.id} className="border-b border-gray-100 pb-3">
+    <div className="space-y-6">
+      <Card>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Your AI Fluency Report</h2>
+            <p className="mt-0.5 text-xs font-medium text-amber-700">
+              AI suggestion — review with your manager. These are not final.
+            </p>
+          </div>
+          {avgSuggested != null && (
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Overall (suggested)</p>
+              <p className="text-2xl font-bold text-brand">
+                {LEVEL_LABELS[Math.round(avgSuggested) as Level]}
+              </p>
+              {composite != null && (
+                <p className="text-xs text-gray-500">
+                  Agreed: {LEVEL_LABELS[Math.round(composite) as Level]}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {a.dimensionScores.map((d) => {
+        const tips = d.aiDevelopmentTips;
+        const nextLevel = d.aiSuggestedLevel != null && d.aiSuggestedLevel < 4
+          ? LEVEL_LABELS[(d.aiSuggestedLevel + 1) as Level]
+          : null;
+        return (
+          <Card key={d.id}>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-brand">
                 {d.dimension}
               </span>
-              <span className="font-semibold">
+              <span className="rounded-full bg-brand/10 px-3 py-0.5 text-sm font-semibold text-brand">
                 {d.aiSuggestedLevel != null ? LEVEL_LABELS[d.aiSuggestedLevel as Level] : '—'}
               </span>
             </div>
-            <p className="mt-1 text-sm text-gray-600">{d.aiRationale}</p>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-4 text-sm text-gray-600">
-        Next: your manager will review these with you in a 1:1 and you’ll agree on a final level
-        together.
-      </p>
-    </Card>
+            <p className="mt-2 text-sm text-gray-700">{d.aiRationale}</p>
+            {tips && tips.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold text-gray-500">
+                  To reach {nextLevel ?? 'deeper impact at L4'}:
+                </p>
+                <ul className="mt-1 space-y-1">
+                  {tips.map((tip, i) => (
+                    <li key={i} className="flex gap-2 text-sm text-gray-600">
+                      <span className="mt-0.5 text-brand">→</span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </Card>
+        );
+      })}
+
+      <Card>
+        <p className="text-sm text-gray-600">
+          Next: your manager will review these with you in a 1:1 and confirm your final agreed levels.
+        </p>
+      </Card>
+    </div>
   );
 }

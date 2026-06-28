@@ -8,6 +8,7 @@ import { z } from 'zod';
 const dimensionResult = z.object({
   level: z.number().int().min(0).max(4),
   rationale: z.string().min(1).max(500),
+  developmentTips: z.array(z.string().min(1).max(400)).min(1).max(3),
 });
 
 export const scoringSchema = z.object({

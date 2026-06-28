@@ -17,6 +17,7 @@ export interface DimensionScore {
   managerNotes: string | null;
   aiSuggestedLevel: number | null;
   aiRationale: string | null;
+  aiDevelopmentTips: string[] | null;
   agreedLevel: number | null;
 }
 

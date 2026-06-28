@@ -127,7 +127,11 @@ async function runScoring(id: string): Promise<void> {
       ] as const) {
         await tx.dimensionScore.update({
           where: { assessmentId_dimension: { assessmentId: id, dimension: dim } },
-          data: { aiSuggestedLevel: result[field].level, aiRationale: result[field].rationale },
+          data: {
+            aiSuggestedLevel: result[field].level,
+            aiRationale: result[field].rationale,
+            aiDevelopmentTips: JSON.stringify(result[field].developmentTips),
+          },
         });
       }
       await tx.assessment.update({ where: { id }, data: { scoringFailed: false } });
