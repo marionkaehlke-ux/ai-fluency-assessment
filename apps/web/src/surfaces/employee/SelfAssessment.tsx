@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   DIMENSIONS,
@@ -25,8 +26,22 @@ const QUESTIONS: Record<Dimension, string> = {
 
 type Responses = Record<Dimension, string>;
 
+function formatPeriodLabel(period: string | null): string | null {
+  if (!period) return null;
+  if (period === 'last-1-month') return 'Last month';
+  if (period === 'last-2-months') return 'Last 2 months';
+  if (period === 'last-3-months') return 'Last 3 months';
+  if (period.startsWith('custom:')) {
+    const [, start, end] = period.split(':');
+    return `${start} – ${end}`;
+  }
+  return null;
+}
+
 export function SelfAssessment({ me }: { me: Me }) {
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const periodLabel = formatPeriodLabel(searchParams.get('period'));
   const [step, setStep] = useState(0);
   const [opening, setOpening] = useState('');
   const [reportFile, setReportFile] = useState<File | null>(null);
@@ -83,6 +98,11 @@ export function SelfAssessment({ me }: { me: Me }) {
   return (
     <div className="space-y-6">
       <StepHeader step={step} />
+      {periodLabel && (
+        <p className="text-xs text-gray-500">
+          Assessment period: <span className="font-medium text-gray-700">{periodLabel}</span>
+        </p>
+      )}
 
       {step === 0 && (
         <Card>
