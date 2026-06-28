@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -45,8 +45,9 @@ export function SelfAssessment({ me }: { me: Me }) {
   const [step, setStep] = useState(0);
   const [opening, setOpening] = useState('');
   const [reportFile, setReportFile] = useState<File | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dimensionFiles, setDimensionFiles] = useState<Record<Dimension, File | null>>({
+    MINDSET: null, STRATEGY: null, BUILDING: null, ACCOUNTABILITY: null,
+  });
   const [responses, setResponses] = useState<Responses>({
     MINDSET: '',
     STRATEGY: '',
@@ -142,54 +143,7 @@ export function SelfAssessment({ me }: { me: Me }) {
           />
           <CharCount value={opening} min={OPENING_MIN_CHARS} />
 
-          <div
-            className={`mt-4 rounded-md border-2 border-dashed p-4 text-center text-sm transition-colors ${dragging ? 'border-brand bg-blue-50' : 'border-gray-300 bg-gray-50'}`}
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              const file = e.dataTransfer.files[0];
-              if (file) setReportFile(file);
-            }}
-          >
-            {reportFile ? (
-              <div className="flex items-center justify-center gap-2 text-gray-700">
-                <span>📎 {reportFile.name}</span>
-                <button
-                  type="button"
-                  className="text-xs text-gray-400 hover:text-red-500"
-                  onClick={() => setReportFile(null)}
-                >
-                  ✕ Remove
-                </button>
-              </div>
-            ) : (
-              <>
-                <p className="text-gray-500">
-                  Drag & drop your self assessment report here, or{' '}
-                  <button
-                    type="button"
-                    className="text-brand underline hover:opacity-80"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    browse to attach
-                  </button>
-                </p>
-                <p className="mt-1 text-xs text-gray-400">PDF, DOCX, or similar (voluntary)</p>
-              </>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept=".pdf,.doc,.docx,.txt"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setReportFile(file);
-              }}
-            />
-          </div>
+          <FileAttach file={reportFile} onChange={setReportFile} />
 
           <div className="mt-4 flex gap-2">
             <Button variant="ghost" onClick={() => setStep(0)}>← Back</Button>
@@ -203,13 +157,18 @@ export function SelfAssessment({ me }: { me: Me }) {
           {DIMENSIONS.map((d) => (
             <Card key={d}>
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-brand">{d}</p>
-              <label className="mb-2 block text-sm font-medium">{QUESTIONS[d]}</label>
+              <label className="mb-1 block text-sm font-medium">{QUESTIONS[d]}</label>
+              <p className="mb-2 text-xs text-gray-500">Please add any evidence if available.</p>
               <textarea
                 className="h-32 w-full rounded-md border border-gray-300 p-3 text-sm"
                 value={responses[d]}
                 onChange={(e) => setResponses((r) => ({ ...r, [d]: e.target.value }))}
               />
               <CharCount value={responses[d]} min={RESPONSE_MIN_CHARS} />
+              <FileAttach
+                file={dimensionFiles[d]}
+                onChange={(f) => setDimensionFiles((prev) => ({ ...prev, [d]: f }))}
+              />
             </Card>
           ))}
           <div className="flex gap-2">
@@ -269,6 +228,52 @@ function CharCount({ value, min }: { value: string; min: number }) {
     <p className={`mt-1 text-xs font-medium ${met ? 'text-green-600' : 'text-orange-500'}`}>
       {met ? `✓ ${n} / ${min} characters` : `${n} / ${min} characters required to continue`}
     </p>
+  );
+}
+
+function FileAttach({ file, onChange }: { file: File | null; onChange: (f: File | null) => void }) {
+  const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  return (
+    <div
+      className={`mt-3 rounded-md border-2 border-dashed p-3 text-center text-sm transition-colors ${dragging ? 'border-brand bg-blue-50' : 'border-gray-200 bg-gray-50'}`}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        const f = e.dataTransfer.files[0];
+        if (f) onChange(f);
+      }}
+    >
+      {file ? (
+        <div className="flex items-center justify-center gap-2 text-gray-700">
+          <span>📎 {file.name}</span>
+          <button type="button" className="text-xs text-gray-400 hover:text-red-500" onClick={() => onChange(null)}>
+            ✕ Remove
+          </button>
+        </div>
+      ) : (
+        <>
+          <p className="text-gray-500">
+            Drag & drop a file here, or{' '}
+            <label htmlFor={inputId} className="cursor-pointer text-brand underline hover:opacity-80">
+              browse to attach
+            </label>
+          </p>
+          <p className="mt-1 text-xs text-gray-400">PDF, DOCX, image, or screenshot</p>
+        </>
+      )}
+      <input
+        id={inputId}
+        ref={inputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onChange(f); }}
+      />
+    </div>
   );
 }
 
