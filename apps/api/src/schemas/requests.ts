@@ -32,7 +32,7 @@ export const saveDraftSchema = z.object({
 export const submitSchema = z.object({
   expectedUpdatedAt,
   openingResponse: openingResponseSchema,
-  selfRatedLevel: levelSchema,
+  selfRatedLevel: levelSchema.optional(),
   responses: z
     .array(z.object({ dimension: dimensionEnum, employeeResponse: dimensionResponseSchema }))
     .length(4)
