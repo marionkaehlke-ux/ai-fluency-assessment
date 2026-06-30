@@ -24,6 +24,7 @@ export interface DimensionScore {
 export interface Assessment {
   id: string;
   userId: string;
+  user: { name: string; email: string };
   cycle: string;
   status: AssessmentStatus;
   openingResponse: string | null;

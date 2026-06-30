@@ -15,7 +15,11 @@ import { config } from '../config.js';
 import type { CurrentUser } from '../types.js';
 import type { CalibrateBody, SaveDraftBody, SubmitBody } from '../schemas/requests.js';
 
-const fullInclude = { dimensionScores: true, calibration: true } as const;
+const fullInclude = {
+  dimensionScores: true,
+  calibration: true,
+  user: { select: { name: true, email: true } },
+} as const;
 
 export type FullAssessment = Awaited<ReturnType<typeof getAssessment>>;
 

@@ -71,6 +71,8 @@ jobs:
           OKTA_CLIENT_SECRET: ${{ secrets.DEFAULT_OKTA_OIDC_SECRET }}
           SESSION_SECRET: ${{ secrets.DEFAULT_SESSION_SECRET }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PERSONIO_CLIENT_ID: ${{ secrets.PERSONIO_CLIENT_ID }}
+          PERSONIO_API_KEY: ${{ secrets.PERSONIO_API_KEY }}
         run: |
           helm upgrade --install ai-fluency-assessment ./deploy/chart/ \
             --namespace launchpad-ai-fluency-assessment \
@@ -82,6 +84,8 @@ jobs:
             --set "ingress.oidc.sessionSecret=${SESSION_SECRET}" \
             --set "secrets.DATABASE_URL=${{ env.DATABASE_URL }}" \
             --set "secrets.ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" \
+            --set "secrets.PERSONIO_CLIENT_ID=${PERSONIO_CLIENT_ID}" \
+            --set "secrets.PERSONIO_API_KEY=${PERSONIO_API_KEY}" \
             --wait \
             --timeout 5m \
             --atomic

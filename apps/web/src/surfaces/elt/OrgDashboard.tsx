@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   Bar,
@@ -24,14 +25,18 @@ interface OrgDashboardData {
   functionBreakdown: Array<{ functionArea: string; count: number; averageComposite: number }>;
 }
 
+const CYCLES = ['2026-H1', '2026-H2', '2025-H1', '2025-H2'];
+
 export function OrgDashboard() {
+  const [cycle, setCycle] = useState<string>('2026-H1');
+
   const q = useQuery({
-    queryKey: ['org', 'dashboard'],
-    queryFn: () => api.get<OrgDashboardData>('/org/dashboard'),
+    queryKey: ['org', 'dashboard', cycle],
+    queryFn: () => api.get<OrgDashboardData>(`/org/dashboard?cycle=${cycle}`),
   });
 
   const narrative = useMutation({
-    mutationFn: () => api.post<{ narrative: string }>('/org/narrative'),
+    mutationFn: () => api.post<{ narrative: string }>(`/org/narrative?cycle=${cycle}`),
   });
 
   if (q.isLoading) return <Spinner />;
@@ -48,15 +53,29 @@ export function OrgDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Organisation — AI fluency</h1>
-        <a
-          href="/api/v1/org/export"
-          className="rounded-md border border-brand px-3 py-2 text-sm font-medium text-brand hover:bg-brand/10"
-        >
-          Export anonymised CSV
-        </a>
+        <div className="flex items-center gap-3">
+          <select
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            value={cycle}
+            onChange={(e) => {
+              setCycle(e.target.value);
+              narrative.reset();
+            }}
+          >
+            {CYCLES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <a
+            href={`/api/v1/org/export?cycle=${cycle}`}
+            className="rounded-md border border-brand px-3 py-2 text-sm font-medium text-brand hover:bg-brand/10"
+          >
+            Export anonymised CSV
+          </a>
+        </div>
       </div>
       <p className="text-sm text-gray-600">
-        {d.totalAssessed} calibrated assessments{d.cycle ? ` · ${d.cycle}` : ''}.
+        {d.totalAssessed} calibrated assessments · {cycle}.
       </p>
 
       <div className="grid gap-6 md:grid-cols-2">

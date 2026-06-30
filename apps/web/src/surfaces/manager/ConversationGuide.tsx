@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { DIMENSIONS, LEVEL_LABELS, LEVEL_MAX, LEVEL_MIN, type Dimension, type Level } from '@ai-fluency/shared';
 import { api } from '../../lib/api.js';
 import { Button, Card, ErrorBanner, Spinner } from '../../components/ui.js';
 import type { Assessment } from '../../lib/types.js';
 
-type Draft = Record<Dimension, { agreedLevel: number; managerNotes: string }>;
+type Draft = Record<Dimension, { agreedLevel: number; managerNotes: string }> & {
+  flaggedForSABuilds: boolean;
+};
 
 export function ConversationGuide() {
   const { id } = useParams<{ id: string }>();
@@ -22,7 +24,7 @@ export function ConversationGuide() {
 
   useEffect(() => {
     if (!q.data || draft) return;
-    const initial = {} as Draft;
+    const initial = { flaggedForSABuilds: q.data.calibration?.flaggedForSABuilds ?? false } as Draft;
     for (const ds of q.data.dimensionScores) {
       initial[ds.dimension] = {
         // Pre-fill with the AI suggestion as a starting point — the manager must still confirm.
@@ -38,6 +40,7 @@ export function ConversationGuide() {
       api.post<Assessment>(`/assessments/${id}/calibrate`, {
         expectedUpdatedAt: q.data!.updatedAt,
         manager_confirmed: true,
+        flaggedForSABuilds: draft!.flaggedForSABuilds,
         dimensions: DIMENSIONS.map((d) => ({
           dimension: d,
           agreedLevel: draft![d].agreedLevel,
@@ -56,10 +59,21 @@ export function ConversationGuide() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Conversation guide</h1>
+      <div>
+        <Link to="/manager/team" className="text-sm text-brand hover:underline">
+          ← Back to my team
+        </Link>
+        <h1 className="mt-1 text-2xl font-bold">
+          Conversation guide — {a.user.name}
+        </h1>
+        <p className="text-sm text-gray-500">{a.cycle}</p>
+      </div>
       {isCalibrated && (
-        <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-          This assessment is calibrated. Agreed levels are final for {a.cycle}.
+        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <p className="font-medium">Assessment calibrated — agreed levels are final for {a.cycle}.</p>
+          <Link to="/manager/team" className="mt-2 inline-block text-brand underline">
+            Return to team view
+          </Link>
         </div>
       )}
       {scoringUnavailable && (
@@ -121,6 +135,20 @@ export function ConversationGuide() {
 
       {!isCalibrated && (
         <Card>
+          <label className="mb-4 flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={draft.flaggedForSABuilds}
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev!, flaggedForSABuilds: e.target.checked }))
+              }
+            />
+            <span>
+              <strong>Nominate for SA Builds</strong> — this employee is performing at L3/L4 and
+              should be considered for the SA Builds development programme.
+            </span>
+          </label>
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1" />
             <span>

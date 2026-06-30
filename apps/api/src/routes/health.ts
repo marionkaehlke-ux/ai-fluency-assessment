@@ -1,17 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma.js';
-import { redis } from '../lib/redis.js';
 
 /** Liveness (/healthz) and readiness (/readyz) endpoints (CLAUDE.md / 12-factor). */
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
-  // Liveness: process is up. No external dependency checks.
   app.get('/healthz', async () => ({ status: 'ok' }));
 
-  // Readiness: can serve traffic — DB reachable, and Redis if scoring is enabled.
   app.get('/readyz', async (_req, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      if (redis) await redis.ping();
       return { status: 'ready' };
     } catch (err) {
       reply.code(503);
